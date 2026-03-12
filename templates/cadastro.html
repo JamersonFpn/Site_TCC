@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" href="/static/style.css">
+    <title>Cadastro de Chamado</title>
+</head>
+<body>
+    <div class="container">
+        <h2>Registrar Solicitação</h2>
+        <form action="/enviar-chamado" method="post">
+            <input type="text" name="nome" placeholder="Nome Completo" required>
+            <input type="email" name="email" placeholder="E-mail" required>
+            <input type="text" name="telefone" placeholder="Telefone (WhatsApp)" required>
+            <textarea name="descricao" placeholder="Breve explicação do assunto do TCC" rows="5" required></textarea>
+            <button type="submit">Enviar Chamado</button>
+        </form>
+    </div>
+</body>
+</html>

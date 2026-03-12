@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" href="/static/style.css">
+    <title>Painel Admin</title>
+</head>
+<body>
+    <header><h1>Painel de Chamados - Admin</h1></header>
+    <div class="container" style="max-width: 95%;">
+        <h2>Chamados Recebidos</h2>
+        <table>
+            <tr>
+                <th>ID</th>
+                <th>Nome</th>
+                <th>Contato</th>
+                <th>Descrição</th>
+            </tr>
+            {% for c in todos_os_chamados %}
+            <tr>
+                <td>{{ c.id }}</td>
+                <td>{{ c.nome }}</td>
+                <td>{{ c.email }} <br> {{ c.telefone }}</td>
+                <td>{{ c.descricao }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+        <br>
+        <a href="/">Sair</a>
+    </div>
+</body>
+</html>
