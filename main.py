@@ -1,11 +1,10 @@
-from fastapi import FastAPI, Request, Form, Depends, HTTPException
+from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from starlette import status
 
 app = FastAPI()
-
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
@@ -43,23 +42,23 @@ async def criar_chamado(
 async def login_page(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
 
-@app.route("/dashboard", methods=["GET", "POST"])
-async def dashboard(
+@app.get("/dashboard", response_class=HTMLResponse)
+async def dashboard_page(request: Request):
+    return templates.TemplateResponse("login.html", {"request": request})
+
+@app.post("/dashboard", response_class=HTMLResponse)
+async def dashboard_login(
     request: Request,
-    usuario: str = Form(None),
-    senha: str = Form(None)
+    usuario: str = Form(...),
+    senha: str = Form(...)
 ):
+    if usuario.strip() == ADMIN_USER and senha.strip() == ADMIN_PASS:
+        return templates.TemplateResponse("dashboard.html", {"request": request, "todos_os_chamados": chamados})
     
-    u_limpo = str(usuario).strip()
-    p_limpo = str(senha).strip()
-
-
-    if u_limpo == ADMIN_USER and p_limpo == ADMIN_PASS:
-        return templates.TemplateResponse("dashboard.html", {"request": request, "chamados": chamados})
-    else:
-        print(f"ERRO DE LOGIN - Recebido: '{usuario}' / Esperado: '{ADMIN_USER}'")
-        return HTMLResponse(content="<h1>Acesso Negado</h1><p>Usuário ou senha incorretos.</p><a href='/login'>Tentar novamente</a>", status_code=401)
-
+    return HTMLResponse(
+        content="<h1>Acesso Negado</h1><p>Usuário ou senha incorretos.</p><a href='/login'>Tentar novamente</a>",
+        status_code=401
+    )
 
 if __name__ == "__main__":
     import uvicorn
