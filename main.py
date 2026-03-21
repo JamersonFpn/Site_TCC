@@ -3,23 +3,40 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from starlette import status
+from starlette.middleware.sessions import SessionMiddleware
+from dotenv import load_dotenv
+import os
+
+
+
+
+load_dotenv()
 
 app = FastAPI()
+
+app.add_middleware(SessionMiddleware, secret_key=os.getenv("SECRET_KEY"))
+
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
 chamados = []
 
-ADMIN_USER = "adminAPS"
-ADMIN_PASS = "Superac123"
+ADMIN_USER = os.getenv("ADMIN_USER")
+ADMIN_PASS = os.getenv("ADMIN_PASS")
+
+
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     return templates.TemplateResponse("home.html", {"request": request})
 
+
+
 @app.get("/cadastro", response_class=HTMLResponse)
 async def pagina_cadastro(request: Request):
     return templates.TemplateResponse("cadastro.html", {"request": request})
+
+
 
 @app.post("/enviar-chamado")
 async def criar_chamado(
@@ -38,27 +55,47 @@ async def criar_chamado(
     chamados.append(novo_chamado)
     return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
 
+
+
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
 
+
+
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard_page(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request})
+    if not request.session.get("logado"):
+        return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+    
+    return templates.TemplateResponse("dashboard.html", {"request": request, "todos_os_chamados": chamados})
 
-@app.post("/dashboard", response_class=HTMLResponse)
-async def dashboard_login(
+
+
+@app.post("/login", response_class=HTMLResponse)
+async def login_post(
     request: Request,
     usuario: str = Form(...),
     senha: str = Form(...)
 ):
     if usuario.strip() == ADMIN_USER and senha.strip() == ADMIN_PASS:
-        return templates.TemplateResponse("dashboard.html", {"request": request, "todos_os_chamados": chamados})
-    
-    return HTMLResponse(
-        content="<h1>Acesso Negado</h1><p>Usuário ou senha incorretos.</p><a href='/login'>Tentar novamente</a>",
+        request.session["logado"] = True
+        return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
+ 
+    return templates.TemplateResponse(
+        "login.html",
+        {"request": request, "erro": "Usuário ou senha incorretos."},
         status_code=401
     )
+
+
+
+@app.get("/logout")
+async def logout(request: Request):
+    request.session.clear()
+    return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+
+
 
 if __name__ == "__main__":
     import uvicorn
