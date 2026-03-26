@@ -5,12 +5,42 @@ from fastapi.staticfiles import StaticFiles
 from starlette import status
 from starlette.middleware.sessions import SessionMiddleware
 from dotenv import load_dotenv
+from sqlalchemy import create_engine, Column, Integer, String
+from sqlalchemy.orm import declarative_base, sessionmaker, Session
+from fastapi import Depends
 import os
 
 
-
-
 load_dotenv()
+
+
+engine = create_engine(
+    "sqlite:///chamados.db",
+    connect_args={"check_same_thread": False}
+)
+
+Base = declarative_base()
+
+Session_Local = sessionmaker(bind=engine)
+
+class chamado(Base):
+    __tablename__ = "Chamados"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    nome = Column(String, nullable=False)
+    email = Column(String, nullable=False)
+    telefone = Column(String, nullable=False)
+    descricao = Column(String, nullable=False)
+
+Base.metadata.create_all(bind=engine)
+
+def get_db():
+    db = Session_Local()
+    try:
+        yield db
+    finally:
+        db.close()
+
 
 app = FastAPI()
 
@@ -18,8 +48,6 @@ app.add_middleware(SessionMiddleware, secret_key=os.getenv("SECRET_KEY"))
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
-
-chamados = []
 
 ADMIN_USER = os.getenv("ADMIN_USER")
 ADMIN_PASS = os.getenv("ADMIN_PASS")
@@ -43,16 +71,14 @@ async def criar_chamado(
     nome: str = Form(...),
     email: str = Form(...),
     telefone: str = Form(...),
-    descricao: str = Form(...)
+    descricao: str = Form(...),
+    db: Session = Depends(get_db)
 ):
-    novo_chamado = {
-        "id": len(chamados) + 1,
-        "nome": nome,
-        "email": email,
-        "telefone": telefone,
-        "descricao": descricao
-    }
-    chamados.append(novo_chamado)
+
+    novo_chamado = chamado(nome=nome, email=email, telefone=telefone, descricao=descricao)
+    db.add(novo_chamado)
+    db.commit()
+    
     return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
 
 
@@ -64,11 +90,15 @@ async def login_page(request: Request):
 
 
 @app.get("/dashboard", response_class=HTMLResponse)
-async def dashboard_page(request: Request):
+async def dashboard_page(request: Request, db: Session = Depends(get_db)):
     if not request.session.get("logado"):
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
-    
-    return templates.TemplateResponse("dashboard.html", {"request": request, "todos_os_chamados": chamados})
+ 
+    todos_os_chamados = db.query(chamado).all()
+    return templates.TemplateResponse(
+        "dashboard.html",
+        {"request": request, "todos_os_chamados": todos_os_chamados}
+    )
 
 
 
