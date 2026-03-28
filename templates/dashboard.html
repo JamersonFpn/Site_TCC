@@ -14,13 +14,33 @@
                 <th>Nome</th>
                 <th>Contato</th>
                 <th>Descrição</th>
+                <th>Data</th>
+                <th>Status</th>
+                <th>Ação</th>
             </tr>
             {% for c in todos_os_chamados %}
             <tr>
                 <td>{{ c.id }}</td>
                 <td>{{ c.nome }}</td>
-                <td>{{ c.email }} <br> {{ c.telefone }}</td>
+                <td>{{ c.email }}<br>{{ c.telefone }}</td>
                 <td>{{ c.descricao }}</td>
+                <td>{{ c.criado_em.strftime("%d/%m/%Y %H:%M") }}</td>
+                <td>
+                    <form action="/atualizar-status/{{ c.id }}" method="post">
+                        <select name="novo_status" onchange="this.form.submit()">
+                            <option value="Pendente"      {% if c.status == "Pendente" %}      selected {% endif %}>Pendente</option>
+                            <option value="Em andamento"  {% if c.status == "Em andamento" %}  selected {% endif %}>Em andamento</option>
+                            <option value="Concluído"     {% if c.status == "Concluído" %}     selected {% endif %}>Concluído</option>
+                        </select>
+                    </form>
+                </td>
+                <td>
+                    <form action="/remover-chamado/{{ c.id }}" method="post">
+                        <button type="submit" onclick="return confirm('Tem certeza que deseja remover o chamado de {{ c.nome }}?')">
+                            Remover
+                        </button>
+                    </form>
+                </td>
             </tr>
             {% endfor %}
         </table>

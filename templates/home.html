@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="/static/style.css">
     <title>Análise de TCC</title>
 </head>
@@ -9,9 +11,14 @@
     <div class="container">
         <h2>Bem-vindo, Aluno!</h2>
         <p>Clique no botão abaixo para registrar seu chamado e solicitar a análise do seu trabalho.</p>
+
+        {% if sucesso %}
+        <p style="color: green; font-weight: bold;">✔ Chamado enviado com sucesso! Em breve você será atendido.</p>
+        {% endif %}
+
         <a href="/cadastro"><button>Registrar Novo Chamado</button></a>
         <hr>
-        <a href="/login" class="btn-admin">Acesso Administrativo</a>
+        <a href="/dashboard" class="btn-admin">Acesso Administrativo</a>
     </div>
 </body>
 </html>

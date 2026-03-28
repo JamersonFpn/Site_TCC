@@ -5,9 +5,10 @@ from fastapi.staticfiles import StaticFiles
 from starlette import status
 from starlette.middleware.sessions import SessionMiddleware
 from dotenv import load_dotenv
-from sqlalchemy import create_engine, Column, Integer, String
+from sqlalchemy import create_engine, Column, Integer, String, DateTime
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from fastapi import Depends
+from datetime import datetime
 import os
 
 
@@ -31,6 +32,8 @@ class chamado(Base):
     email = Column(String, nullable=False)
     telefone = Column(String, nullable=False)
     descricao = Column(String, nullable=False)
+    criado_em = Column(DateTime, default=datetime.now)
+    status = Column(String, default="Pendente")
 
 Base.metadata.create_all(bind=engine)
 
@@ -56,7 +59,8 @@ ADMIN_PASS = os.getenv("ADMIN_PASS")
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    return templates.TemplateResponse("home.html", {"request": request})
+    sucesso = request.query_params.get("sucesso")
+    return templates.TemplateResponse("home.html", {"request": request, "sucesso": sucesso})
 
 
 
@@ -75,11 +79,19 @@ async def criar_chamado(
     db: Session = Depends(get_db)
 ):
 
-    novo_chamado = chamado(nome=nome, email=email, telefone=telefone, descricao=descricao)
+    novo_chamado = chamado(
+        nome = nome, 
+        email = email, 
+        telefone = telefone, 
+        descricao = descricao,
+        criado_em = datetime.now(),
+        status = "Pendente"
+    )
+
     db.add(novo_chamado)
     db.commit()
     
-    return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(url="/?sucesso=1", status_code=status.HTTP_303_SEE_OTHER)
 
 
 
@@ -94,7 +106,7 @@ async def dashboard_page(request: Request, db: Session = Depends(get_db)):
     if not request.session.get("logado"):
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
  
-    todos_os_chamados = db.query(chamado).all()
+    todos_os_chamados = db.query(chamado).order_by(chamado.criado_em.desc()).all()
     return templates.TemplateResponse(
         "dashboard.html",
         {"request": request, "todos_os_chamados": todos_os_chamados}
@@ -117,6 +129,52 @@ async def login_post(
         {"request": request, "erro": "Usuário ou senha incorretos."},
         status_code=401
     )
+
+@app.get("/atualizar-status/{chamado_id}")
+async def atualizar_status_get(chamado_id: int, request: Request):
+    return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
+
+
+@app.post("/atualizar-status/{chamado_id}")
+async def atualizar_status(
+    chamado_id: int,
+    request: Request,
+    novo_status: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    if not request.session.get("logado"):
+        return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+ 
+    status_permitidos = ["Pendente", "Em andamento", "Concluído"]
+    if novo_status not in status_permitidos:
+        return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
+ 
+    c = db.query(chamado).filter(chamado.id == chamado_id).first()
+    if c:
+        c.status = novo_status
+        db.commit()
+ 
+    return RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+
+
+
+@app.post("/remover-chamado/{chamado_id}")
+async def remover_chamado(
+    chamado_id: int,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+
+    if not request.session.get("logado"):
+        return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+ 
+    c = db.query(chamado).filter(chamado.id == chamado_id).first()
+    if c:
+        db.delete(c)
+        db.commit()
+ 
+    return RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+
 
 
 
